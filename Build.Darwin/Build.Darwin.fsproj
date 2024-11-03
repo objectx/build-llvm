@@ -5,7 +5,9 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Goodies.fs" />
     <Compile Include="BuildEnv.fs" />
+    <Compile Include="Bootstrap.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
