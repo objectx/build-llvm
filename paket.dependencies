@@ -1,0 +1,12 @@
+source https://api.nuget.org/v3/index.json
+// source https://nuget.org/api/v2
+
+storage: none
+
+nuget FSharp.Core
+
+nuget Fake.Core.Trace
+nuget Fake.Core.Target
+nuget Fake.Core.Context
+nuget Fake.IO.FileSystem
+nuget BlackFox.CommandLine
