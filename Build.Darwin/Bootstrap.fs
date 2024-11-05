@@ -7,42 +7,28 @@ module internal Bootstrap =
 
     open Goodies
 
-    let configure (_: TargetParameter) =
-        let buildDir = BuildEnv.buildDirOf "bootstrap"
-        let projects = [| "clang"; "clang-tools-extra"; "lld" |]
-        let runtimes = [| "compiler-rt"; "libcxx"; "libcxxabi"; "libunwind" |]
+    open System.IO
 
-        let bootstrapTargets =
-            [| "check-all"
-               "check-llvm"
-               "check-clang"
-               "llvm-config"
-               "test-suite"
-               "test-depends"
-               "llvm-test-depends"
-               "clang-test-depends"
-               "distribution"
-               "install-distribution"
-               "clang" |]
+    let configure (_: TargetParameter) =
+        let cmakeCacheDir = (__SOURCE_DIRECTORY__ @@ "cmake") |> Path.GetFullPath
+
+        let buildDir = BuildEnv.buildDirOf "bootstrap"
 
         let cacheVars =
-            [| "CMAKE_INSTALL_PREFIX=" + (BuildEnv.buildRoot @@ "stage2-install")
-               "CMAKE_BUILD_TYPE=MinSizeRel"
-               "LLVM_TARGETS_TO_BUILD=Native"
-               "LLVM_ENABLE_PROJECTS=" + toCMakeList projects
-               "LLVM_ENABLE_RUNTIMES=" + toCMakeList runtimes
-               "PACKAGE_VENDOR=objectx"
-               "BOOTSTRAP_LLVM_ENABLE_LTO=ON"
-               "CLANG_BOOTSTRAP_TARGETS=" + toCMakeList bootstrapTargets
-               "CLANG_ENABLE_BOOTSTRAP=ON"
-               "CLANG_BOOTSTRAP_CMAKE_ARGS="
-               + toCMakeList [| "-C"; (BuildEnv.repositoryRoot @@ "stage2-cache.cmake") |] |]
+            let stage2Args = toCMakeList [| "-C"; cmakeCacheDir @@ "stage2-cache.cmake" |]
+            let installDir = BuildEnv.buildRoot @@ "stage2-install"
+
+            [| "CMAKE_C_COMPILER_LAUNCHER=sccache"
+               "CMAKE_CXX_COMPILER_LAUNCHER=sccache"
+               $"CMAKE_INSTALL_PREFIX={installDir}"
+               $"CLANG_BOOTSTRAP_CMAKE_ARGS={stage2Args}" |]
 
         Trace.trace $"Configuring in {buildDir}..."
 
         CmdLine.Empty
         |> CmdLine.appendPrefix "-B" buildDir
         |> CmdLine.appendPrefix "-G" "Ninja"
+        |> CmdLine.appendPrefix "-C" (cmakeCacheDir @@ "darwin.cmake")
         |> CmdLine.appendPrefixSeq "-D" cacheVars
         |> CmdLine.append "llvm-project/llvm"
         |> CmdLine.toArray
@@ -59,6 +45,7 @@ module internal Bootstrap =
         CmdLine.Empty
         |> CmdLine.appendPrefix "--build" buildDir
         |> CmdLine.appendPrefix "--target" "stage2-distribution"
+        // |> CmdLine.append "-v"
         |> CmdLine.toArray
         |> CreateProcess.fromRawCommand "cmake"
         |> CreateProcess.ensureExitCode
